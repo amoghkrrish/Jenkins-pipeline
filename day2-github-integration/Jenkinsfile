@@ -3,14 +3,18 @@ pipeline {
     stages {
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
-                sh 'docker build -t flask-ci:v1 .'
+                dir('day2-github-integration') {
+                    echo 'Building Docker image...'
+                    sh 'docker build -t flask-ci:v1 .'
+                }
             }
         }
         stage('Test') {
             steps {
-                echo 'Running quick test...'
-                sh 'docker run --rm flask-ci:v1 python -c "print(\"App imported successfully\")"'
+                dir('day2-github-integration') {
+                    echo 'Running quick test...'
+                    sh 'docker run --rm flask-ci:v1 python -c "print(\"App imported successfully\")"'
+                }
             }
         }
     }
