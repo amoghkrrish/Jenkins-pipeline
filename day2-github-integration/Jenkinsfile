@@ -4,7 +4,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Pulling code from GitHub...'
-                git branch: 'main', url: 'https://github.com/amoghkrrish/jenkins-pipeline.git'
+                git branch: 'master', url: 'https://github.com/amoghkrrish/jenkins-pipeline.git'
             }
         }
         stage('Build Docker Image') {
