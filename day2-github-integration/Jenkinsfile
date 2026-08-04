@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
     stages {
@@ -13,9 +14,9 @@ pipeline {
             steps {
                 dir('day2-github-integration') {
                     echo 'Running quick test...'
-                    sh 'docker run --rm flask-ci:v1 python -c "print(\"App imported successfully\")"'
-                }
-            }
+                    sh '''docker run --rm flask-ci:v1 python -c "print('App imported successfully')"''                }
+               }
+           }
         }
     }
 }
