@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_REPO = 'amoghkrrish/flask-jenkins-cicd'
+        DOCKER_TAG = "v${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image ${DOCKER_HUB_REPO}:${DOCKER_TAG}..."
+                dir('day3-dockerhub-k8s') {
+                    sh "docker build -t ${DOCKER_HUB_REPO}:${DOCKER_TAG} ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo "Pushing image to Docker Hub..."
+                dir('day3-dockerhub-k8s') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${DOCKER_HUB_REPO}:${DOCKER_TAG}
+                            docker logout
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "Deploying to Kubernetes..."
+                dir('day3-dockerhub-k8s') {
+                    sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${DOCKER_TAG} --record || true"
+                }
+            }
+        }
+    }
+}
