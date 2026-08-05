@@ -39,3 +39,22 @@ docker logs jenkins   # get initial admin password
 ```bash
 ngrok http 8080   # expose Jenkins
 # Use the ngrok URL in GitHub webhook: <ngrok-url>/github-webhook/
+
+# Jenkins Day 3 – Push to Docker Hub & Deploy to K8s
+
+## What I learned
+- Securely storing Docker Hub credentials in Jenkins.
+- Using environment variables and `withCredentials` in a Pipeline.
+- Tagging images with `BUILD_NUMBER` for unique versions.
+- Installing `kubectl` in Jenkins and connecting it to Minikube.
+- Updating a Kubernetes Deployment via `kubectl set image` in a pipeline.
+
+## Files
+- `Jenkinsfile` – complete CI/CD pipeline (build → push → deploy).
+- `app.py`, `Dockerfile` – Flask app.
+- `k8s-flask.yaml` – Deployment and Service.
+
+## Pipeline overview
+1. Build Docker image
+2. Push to Docker Hub (`amoghkrrish/flask-jenkins-cicd:v${BUILD_NUMBER}`)
+3. Deploy to Kubernetes (`kubectl set image`)
