@@ -55,11 +55,12 @@ pipeline {
             steps {
                 echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
                 dir('day4-parametrized') {
-                    sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG} --record"
-                }
-            }
-        }
-
+                    withEnv(['KUBECONFIG=/path/to/your/kubeconfig']) {
+                        sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}"
+                    }
+                 }
+              }
+          }
         stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
