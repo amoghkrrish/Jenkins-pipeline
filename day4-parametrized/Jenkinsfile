@@ -55,9 +55,8 @@ pipeline {
             steps {
                 echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
                 dir('day4-parametrized') {
-                    withEnv(['KUBECONFIG=/path/to/your/kubeconfig']) {
-                        sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}"
-                    }
+                    withEnv(['KUBECONFIG=/path/to/minikube-config.yaml']) {
+                       sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}"                    }
                  }
               }
           }
