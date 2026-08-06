@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'VERSION', defaultValue: '', description: 'Enter a custom version tag (leave empty to use BUILD_NUMBER)')
+    }
+
+    environment {
+        DOCKER_HUB_REPO = 'amoghkrrish/flask-jenkins-cicd'
+        // Use the parameter if provided, otherwise default to BUILD_NUMBER
+        DOCKER_TAG = params.VERSION ? "v${params.VERSION}" : "v${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image ${DOCKER_HUB_REPO}:${DOCKER_TAG}..."
+                dir('day4-parameterized') {
+                    sh "docker build -t ${DOCKER_HUB_REPO}:${DOCKER_TAG} ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo "Pushing image ${DOCKER_HUB_REPO}:${DOCKER_TAG} to Docker Hub..."
+                dir('day4-parameterized') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${DOCKER_HUB_REPO}:${DOCKER_TAG}
+                            docker logout
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "Deploying ${DOCKER_HUB_REPO}:${DOCKER_TAG} to Kubernetes..."
+                dir('day4-parameterized') {
+                    sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${DOCKER_TAG} --record"
+                }
+            }
+        }
+
+        stage('Git Tag') {
+            steps {
+                echo "Tagging Git commit with ${DOCKER_TAG}..."
+                dir('day4-parameterized') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-pat',
+                        usernameVariable: 'GITHUB_USER',
+                        passwordVariable: 'GITHUB_TOKEN'
+                    )]) {
+                        sh '''
+                            git config user.email "jenkins@example.com"
+                            git config user.name "Jenkins CI"
+                            git tag -a ${DOCKER_TAG} -m "Release ${DOCKER_TAG}"
+                            git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/amoghkrrish/jenkins-pipeline.git ${DOCKER_TAG}
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up old Docker images...'
+            sh 'docker system prune -af --volumes || true'
+        }
+    }
+}
