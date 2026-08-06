@@ -7,23 +7,34 @@ pipeline {
 
     environment {
         DOCKER_HUB_REPO = 'amoghkrrish/flask-jenkins-cicd'
-        // Use the parameter if provided, otherwise default to BUILD_NUMBER
-        DOCKER_TAG = params.VERSION ? "v${params.VERSION}" : "v${BUILD_NUMBER}"
     }
 
     stages {
+        stage('Set Version Tag') {
+            steps {
+                script {
+                    // If parameter provided, use it; otherwise use BUILD_NUMBER
+                    if (params.VERSION) {
+                        env.DOCKER_TAG = "v${params.VERSION}"
+                    } else {
+                        env.DOCKER_TAG = "v${BUILD_NUMBER}"
+                    }
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image ${DOCKER_HUB_REPO}:${DOCKER_TAG}..."
+                echo "Building Docker image ${DOCKER_HUB_REPO}:${env.DOCKER_TAG}..."
                 dir('day4-parameterized') {
-                    sh "docker build -t ${DOCKER_HUB_REPO}:${DOCKER_TAG} ."
+                    sh "docker build -t ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} ."
                 }
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                echo "Pushing image ${DOCKER_HUB_REPO}:${DOCKER_TAG} to Docker Hub..."
+                echo "Pushing image ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Docker Hub..."
                 dir('day4-parameterized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'dockerhub-creds',
@@ -42,16 +53,16 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                echo "Deploying ${DOCKER_HUB_REPO}:${DOCKER_TAG} to Kubernetes..."
+                echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
                 dir('day4-parameterized') {
-                    sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${DOCKER_TAG} --record"
+                    sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG} --record"
                 }
             }
         }
 
         stage('Git Tag') {
             steps {
-                echo "Tagging Git commit with ${DOCKER_TAG}..."
+                echo "Tagging Git commit with ${env.DOCKER_TAG}..."
                 dir('day4-parameterized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'github-pat',
