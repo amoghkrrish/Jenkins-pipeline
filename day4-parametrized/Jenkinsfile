@@ -26,7 +26,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image ${DOCKER_HUB_REPO}:${env.DOCKER_TAG}..."
-                dir('day4-parameterized') {
+                dir('day4-parametrized') {
                     sh "docker build -t ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} ."
                 }
             }
@@ -35,7 +35,7 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 echo "Pushing image ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Docker Hub..."
-                dir('day4-parameterized') {
+                dir('day4-parametrized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'dockerhub-creds',
                         usernameVariable: 'DOCKER_USER',
@@ -54,7 +54,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
-                dir('day4-parameterized') {
+                dir('day4-parametrized') {
                     sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG} --record"
                 }
             }
@@ -63,7 +63,7 @@ pipeline {
         stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
-                dir('day4-parameterized') {
+                dir('day4-parametrized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'github-pat',
                         usernameVariable: 'GITHUB_USER',
