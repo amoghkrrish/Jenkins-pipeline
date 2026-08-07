@@ -54,9 +54,12 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
-                dir('day4-parametrized') {
-                    withEnv(['KUBECONFIG=/path/to/minikube-config.yaml']) {
-                       sh "kubectl set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}"                    }
+                withCredentials([string(credentialsId: 'k8s-token', variable: 'K8S_TOKEN')]) {
+                    sh """
+                        kubectl --server=https://minikube:8443 \
+                                --token=${K8S_TOKEN} \
+                                --insecure-skip-tls-verify \
+                                set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}
                  }
               }
           }
