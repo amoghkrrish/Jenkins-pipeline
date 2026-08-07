@@ -13,7 +13,6 @@ pipeline {
         stage('Set Version Tag') {
             steps {
                 script {
-                    // If parameter provided, use it; otherwise use BUILD_NUMBER
                     if (params.VERSION) {
                         env.DOCKER_TAG = "v${params.VERSION}"
                     } else {
@@ -26,7 +25,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image ${DOCKER_HUB_REPO}:${env.DOCKER_TAG}..."
-                dir('day4-parametrized') {
+                dir('day4-parameterized') {
                     sh "docker build -t ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} ."
                 }
             }
@@ -35,7 +34,7 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 echo "Pushing image ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Docker Hub..."
-                dir('day4-parametrized') {
+                dir('day4-parameterized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'dockerhub-creds',
                         usernameVariable: 'DOCKER_USER',
@@ -56,17 +55,19 @@ pipeline {
                 echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
                 withCredentials([string(credentialsId: 'k8s-token', variable: 'K8S_TOKEN')]) {
                     sh """
-                        kubectl --server=https://minikube:8443 \
-                                --token=${K8S_TOKEN} \
-                                --insecure-skip-tls-verify \
+                        kubectl --server=https://minikube:8443 \\
+                                --token=${K8S_TOKEN} \\
+                                --insecure-skip-tls-verify \\
                                 set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}
-                 }
-              }
-          }
+                    """
+                }
+            }
+        }
+
         stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
-                dir('day4-parametrized') {
+                dir('day4-parameterized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'github-pat',
                         usernameVariable: 'GITHUB_USER',
