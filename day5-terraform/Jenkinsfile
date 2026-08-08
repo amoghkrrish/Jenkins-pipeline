@@ -69,15 +69,13 @@ pipeline {
                 }
             }
         }
-
-        stage('Terraform Apply') {
+        
+                stage('Terraform Apply') {
             steps {
                 echo "Running Terraform to ensure infrastructure..."
                 dir('day5-terraform') {
-                    withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
-                        sh '''
-                            cat > main.tf << 'EOF'
-                            terraform {
+                    writeFile file: 'main.tf', text: '''
+terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -113,8 +111,9 @@ resource "kubernetes_config_map" "demo_config" {
     "message" = "Hello from Terraform!"
   }
 }
-EOF
-                            # Now Terraform will find the file
+'''
+                    withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
+                        sh '''
                             docker run --rm -v $(pwd):/workspace -w /workspace hashicorp/terraform:latest init
                             docker run --rm -v $(pwd):/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest plan -out=tfplan
                             docker run --rm -v $(pwd):/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest apply -auto-approve tfplan
