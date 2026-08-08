@@ -76,7 +76,45 @@ pipeline {
                 dir('day5-terraform') {
                     withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
                         sh '''
-                            # Pull Terraform image (only first time), then run commands
+                            cat > main.tf << 'EOF'
+                            terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+  }
+}
+
+variable "k8s_token" {
+  description = "Kubernetes service account token"
+  type        = string
+  sensitive   = true
+}
+
+provider "kubernetes" {
+  host     = "https://minikube:8443"
+  token    = var.k8s_token
+  insecure = true
+}
+
+resource "kubernetes_namespace" "demo" {
+  metadata {
+    name = "terraform-demo"
+  }
+}
+
+resource "kubernetes_config_map" "demo_config" {
+  metadata {
+    name      = "terraform-demo-config"
+    namespace = kubernetes_namespace.demo.metadata[0].name
+  }
+  data = {
+    "message" = "Hello from Terraform!"
+  }
+}
+EOF
+                            # Now Terraform will find the file
                             docker run --rm -v $(pwd):/workspace -w /workspace hashicorp/terraform:latest init
                             docker run --rm -v $(pwd):/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest plan -out=tfplan
                             docker run --rm -v $(pwd):/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest apply -auto-approve tfplan
@@ -85,7 +123,6 @@ pipeline {
                 }
             }
         }
-
         stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
@@ -114,3 +151,4 @@ pipeline {
         }
     }
 }
+
