@@ -65,6 +65,7 @@ pipeline {
                                     --insecure-skip-tls-verify \\
                                     set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${env.DOCKER_TAG}
                         """
+                   }
                 }
             }
         }
