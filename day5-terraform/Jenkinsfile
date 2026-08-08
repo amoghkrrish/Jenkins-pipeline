@@ -70,11 +70,12 @@ pipeline {
             }
         }
         
-                stage('Terraform Apply') {
+               stage('Terraform Apply') {
             steps {
                 echo "Running Terraform to ensure infrastructure..."
                 dir('day5-terraform') {
-                    writeFile file: 'main.tf', text: '''
+                    sh '''
+cat > main.tf << 'EOF'
 terraform {
   required_providers {
     kubernetes = {
@@ -111,7 +112,8 @@ resource "kubernetes_config_map" "demo_config" {
     "message" = "Hello from Terraform!"
   }
 }
-'''
+EOF
+                    '''
                     withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
                         sh '''
                             docker run --rm -v $(pwd):/workspace -w /workspace hashicorp/terraform:latest init
@@ -121,8 +123,8 @@ resource "kubernetes_config_map" "demo_config" {
                     }
                 }
             }
-        }
-        stage('Git Tag') {
+        }  
+       stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
                 dir('day4-parametrized') {
