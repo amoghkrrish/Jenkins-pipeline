@@ -73,6 +73,11 @@ pipeline {
             steps {
                 echo "Running Terraform to ensure infrastructure..."
                 dir('day5-terraform') {
+                    sh '''
+                        # Download main.tf directly from the repository (raw URL)
+                        curl -fsSL -o main.tf https://raw.githubusercontent.com/amoghkrrish/jenkins-pipeline/main/day5-terraform/main.tf
+                        ls -la main.tf   # confirm file exists
+                    '''
                     withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
                         sh '''
                             docker run --rm -v $(pwd):/workspace -w /workspace hashicorp/terraform:latest init
@@ -87,7 +92,8 @@ pipeline {
        stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
-                dir('day4-parametrized') {
+                dir('day4-po
+arametrized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'github-pat',
                         usernameVariable: 'GITHUB_USER',
