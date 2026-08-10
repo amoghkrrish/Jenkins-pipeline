@@ -69,26 +69,28 @@ pipeline {
                 }
             }
         }
-       stage('Terraform Apply') {
+        stage('Terraform Apply') {
             steps {
                 echo "Running Terraform to ensure infrastructure..."
                 dir('day5-terraform') {
                     sh '''
-                        # Download main.tf directly from the repository (raw URL)
+                        # Download the file to the current workspace
                         curl -fsSL -o main.tf https://raw.githubusercontent.com/amoghkrrish/jenkins-pipeline/main/day5-terraform/main.tf
-                        ls -la main.tf   # confirm file exists
+                        # Copy it to a host-accessible temp directory (Docker Desktop shares /tmp)
+                        rm -rf /tmp/terraform-day5
+                        mkdir -p /tmp/terraform-day5
+                        cp main.tf /tmp/terraform-day5/
                     '''
                     withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
                         sh '''
-                            docker run --rm -v $(pwd):/workspace -w /workspace hashicorp/terraform:latest init
-                            docker run --rm -v $(pwd):/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest plan -out=tfplan
-                            docker run --rm -v $(pwd):/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest apply -auto-approve tfplan
+                            docker run --rm -v /tmp/terraform-day5:/workspace -w /workspace hashicorp/terraform:latest init
+                            docker run --rm -v /tmp/terraform-day5:/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest plan -out=tfplan
+                            docker run --rm -v /tmp/terraform-day5:/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest apply -auto-approve tfplan
                         '''
                     }
                 }
             }
-        }        
-
+        }
        stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
