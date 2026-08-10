@@ -92,8 +92,7 @@ pipeline {
        stage('Git Tag') {
             steps {
                 echo "Tagging Git commit with ${env.DOCKER_TAG}..."
-                dir('day4-po
-arametrized') {
+                dir('day4-parametrized') {
                     withCredentials([usernamePassword(
                         credentialsId: 'github-pat',
                         usernameVariable: 'GITHUB_USER',
