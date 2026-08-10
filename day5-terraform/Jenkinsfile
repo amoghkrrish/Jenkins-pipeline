@@ -69,20 +69,19 @@ pipeline {
                 }
             }
         }
-                stage('Terraform Apply') {
+        stage('Terraform Apply') {
             steps {
                 echo "Running Terraform to ensure infrastructure..."
                 dir('day5-terraform') {
                     sh '''
-                        # Download main.tf and copy it to the shared host folder (mounted from host)
                         curl -fsSL -o main.tf https://raw.githubusercontent.com/amoghkrrish/jenkins-pipeline/main/day5-terraform/main.tf
                         cp main.tf /shared-host-terraform/
                     '''
                     withCredentials([string(credentialsId: 'k8s-token', variable: 'TF_VAR_k8s_token')]) {
                         sh '''
-                            docker run --rm -v /Users/amoghk/jenkins-terraform:/workspace -w /workspace hashicorp/terraform:latest init
-                            docker run --rm -v /Users/amoghk/jenkins-terraform:/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest plan -out=tfplan
-                            docker run --rm -v /Users/amoghk/jenkins-terraform:/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest apply -auto-approve tfplan
+                            docker run --rm --network minikube -v /Users/amoghk/jenkins-terraform:/workspace -w /workspace hashicorp/terraform:latest init
+                            docker run --rm --network minikube -v /Users/amoghk/jenkins-terraform:/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest plan -out=tfplan
+                            docker run --rm --network minikube -v /Users/amoghk/jenkins-terraform:/workspace -w /workspace -e TF_VAR_k8s_token hashicorp/terraform:latest apply -auto-approve tfplan
                         '''
                     }
                 }
