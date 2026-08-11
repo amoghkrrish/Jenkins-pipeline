@@ -1,0 +1,98 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'VERSION', defaultValue: '', description: 'Custom version tag (optional)')
+    }
+
+    environment {
+        DOCKER_HUB_REPO = 'amoghkrrish/flask-jenkins-cicd'
+    }
+
+    stages {
+        stage('Set Version') {
+            steps {
+                script {
+                    if (params.VERSION) {
+                        env.DOCKER_TAG = "v${params.VERSION}"
+                    } else {
+                        env.DOCKER_TAG = "v${BUILD_NUMBER}"
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo "Building ${DOCKER_HUB_REPO}:${env.DOCKER_TAG}..."
+                dir('jenkins-capstone') {
+                    sh "docker build -t ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo "Pushing ${DOCKER_HUB_REPO}:${env.DOCKER_TAG}..."
+                dir('jenkins-capstone') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${DOCKER_HUB_REPO}:${DOCKER_TAG}
+                            docker logout
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "Deploying ${DOCKER_HUB_REPO}:${env.DOCKER_TAG} to Kubernetes..."
+                dir('jenkins-capstone') {
+                    withCredentials([string(credentialsId: 'k8s-token', variable: 'K8S_TOKEN')]) {
+                        sh '''
+                            kubectl --server=https://minikube:8443 \\
+                                    --token=${K8S_TOKEN} \\
+                                    --insecure-skip-tls-verify \\
+                                    apply -f k8s-flask.yaml
+                            kubectl --server=https://minikube:8443 \\
+                                    --token=${K8S_TOKEN} \\
+                                    --insecure-skip-tls-verify \\
+                                    set image deployment/flask-app flask=${DOCKER_HUB_REPO}:${DOCKER_TAG}
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Git Tag') {
+            steps {
+                echo "Tagging commit as ${env.DOCKER_TAG}..."
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-pat',
+                    usernameVariable: 'GITHUB_USER',
+                    passwordVariable: 'GITHUB_TOKEN'
+                )]) {
+                    sh '''
+                        git config user.email "jenkins@ci.local"
+                        git config user.name "Jenkins CI"
+                        git tag -a ${DOCKER_TAG} -m "Release ${DOCKER_TAG}"
+                        git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/amoghkrrish/jenkins-pipeline.git ${DOCKER_TAG}
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up old images...'
+            sh 'docker system prune -af --volumes || true'
+        }
+    }
+}
